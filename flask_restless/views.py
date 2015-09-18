@@ -97,10 +97,12 @@ class ProcessingException(HTTPException):
     JSON object in the body of the response to the client.
 
     """
-    def __init__(self, description='', code=400, *args, **kwargs):
+    def __init__(self, description='', code=400, cache=False, data={}, *args, **kwargs):
         super(ProcessingException, self).__init__(*args, **kwargs)
         self.code = code
         self.description = description
+        self.cache = cache
+        self.data = data
 
 
 class ValidationError(Exception):
@@ -157,9 +159,15 @@ def catch_processing_exceptions(func):
             return func(*args, **kw)
         except ProcessingException as exception:
             current_app.logger.exception(str(exception))
-            status = exception.code
-            message = exception.description or str(exception)
-            return jsonify(message=message), status
+
+            if exception.cache:
+                status = exception.code
+                data = exception.data
+                return data, status
+            else:
+                status = exception.code
+                message = exception.description or str(exception)
+                return jsonify(message=message), status
     return decorator
 
 
